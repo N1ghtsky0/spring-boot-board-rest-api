@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.service.OAuth2AuthorizationService;
 import xyz.jiwook.demo.springBootBoardRestApi.global.common.HttpResponseVO;
@@ -25,6 +26,14 @@ public class OAuth2RestController {
         } catch (BusinessException e) {
             return ResponseEntity.ok(HttpResponseVO.fail("지원되지 않는 소셜 로그인 제공자입니다."));
         }
+    }
+
+    @GetMapping("/oauth2/callback/{registrationId}")
+    public ResponseEntity<HttpResponseVO> oAuth2CallbackToGenerateToken(
+            @PathVariable String registrationId, @RequestParam("code") String code,
+            HttpServletRequest request) {
+        oAuth2AuthorizationService.attemptAuthentication(request, registrationId, code);
+        return ResponseEntity.ok(HttpResponseVO.success(Map.of("result", "success")));
     }
 
 }
