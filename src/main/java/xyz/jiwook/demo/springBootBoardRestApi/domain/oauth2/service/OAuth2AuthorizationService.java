@@ -18,7 +18,13 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.member.model.MemberEntity;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.member.repo.MemberCrudRepo;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.*;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthAccountCrudRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
+
+import java.util.Optional;
 
 @Service
 public class OAuth2AuthorizationService {
@@ -26,11 +32,16 @@ public class OAuth2AuthorizationService {
     private final OAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = new RestClientAuthorizationCodeTokenResponseClient();
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService = new DefaultOAuth2UserService();
+    private final OAuthAccountCrudRepo accountRepo;
+    private final MemberCrudRepo memberRepo;
 
-    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository) {
+    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository,
+                                      OAuthAccountCrudRepo accountRepo, MemberCrudRepo memberRepo) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.authorizationRequestResolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
+        this.accountRepo = accountRepo;
+        this.memberRepo = memberRepo;
     }
 
     public String getAuthorizationUri(HttpServletRequest request, String registrationId) {
@@ -53,6 +64,18 @@ public class OAuth2AuthorizationService {
         OAuth2User user = oAuth2UserService.loadUser(userRequest);
         //todo 유저정보 조회 성공 시 엑세스-리프레시 토큰 발급
 
+        OAuthUserInfo oAuthUserInfo = generateOAuthUserInfo(registrationId, user);
+        if (oAuthUserInfo == null) {
+            return;
+        }
+        Optional<OAuthAccountEntity> oAuthAccountEntity = accountRepo.findByProviderNameAndProviderId(oAuthUserInfo.getProviderName(), oAuthUserInfo.getProviderId());
+        if (oAuthAccountEntity.isEmpty()) {
+            MemberEntity memberEntity = new MemberEntity(oAuthUserInfo);
+            memberEntity = memberRepo.save(memberEntity);
+            OAuthAccountEntity newOAuthAccountEntity = new OAuthAccountEntity(oAuthUserInfo, memberEntity);
+            accountRepo.save(newOAuthAccountEntity);
+        }
+
     }
 
     private OAuth2AuthorizationRequest resolveAuthorizationRequest(HttpServletRequest request, String registrationId) {
@@ -60,5 +83,16 @@ public class OAuth2AuthorizationService {
             throw new BusinessException("Invalid Client Registration Id: " + registrationId);
         }
         return authorizationRequestResolver.resolve(request, registrationId);
+    }
+
+    private OAuthUserInfo generateOAuthUserInfo(String registrationId, OAuth2User oAuth2User) {
+        if ("google".equals(registrationId)) {
+            return new GoogleOAuthUserInfo(oAuth2User.getAttributes());
+        } else if ("naver".equals(registrationId)) {
+            return new NaverOAuthUserInfo(oAuth2User.getAttributes());
+        } else if ("kakao".equals(registrationId)) {
+            return new KakaoOAuthUserInfo(oAuth2User.getAttributes());
+        }
+        return null;
     }
 }
