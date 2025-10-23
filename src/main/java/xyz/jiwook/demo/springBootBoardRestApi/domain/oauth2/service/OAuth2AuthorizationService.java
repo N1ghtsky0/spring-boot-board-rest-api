@@ -1,6 +1,7 @@
 package xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
@@ -20,39 +21,31 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import xyz.jiwook.demo.springBootBoardRestApi.domain.member.model.MemberEntity;
-import xyz.jiwook.demo.springBootBoardRestApi.domain.member.repo.MemberCrudRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.*;
-import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthAccountCrudRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthRedisRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
 
 import java.util.Map;
-import java.util.Optional;
 
+@Slf4j
 @Service
 public class OAuth2AuthorizationService {
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final OAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = new RestClientAuthorizationCodeTokenResponseClient();
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService = new DefaultOAuth2UserService();
-    private final OAuthAccountCrudRepo accountRepo;
-    private final MemberCrudRepo memberRepo;
     private final OAuthRedisRepo oAuthRedisRepo;
 
-    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository,
-                                      OAuthAccountCrudRepo accountRepo, MemberCrudRepo memberRepo, OAuthRedisRepo oAuthRedisRepo) {
+    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository, OAuthRedisRepo oAuthRedisRepo) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.authorizationRequestResolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
-        this.accountRepo = accountRepo;
-        this.memberRepo = memberRepo;
         this.oAuthRedisRepo = oAuthRedisRepo;
     }
 
-    public String getAuthorizationUri(HttpServletRequest request, String registrationId) {
+    public String getAuthorizationUri(HttpServletRequest request, String registrationId, String purpose) {
         OAuth2AuthorizationRequest authorizationRequest = this.resolveAuthorizationRequest(request, registrationId);
-        oAuthRedisRepo.saveOAuth2AuthorizationRequest(authorizationRequest.getState(), authorizationRequest);
+        oAuthRedisRepo.saveOAuth2AuthorizationRequest(authorizationRequest.getState(), new OAuth2AuthorizationRequestWrapper(authorizationRequest, purpose));
         return authorizationRequest.getAuthorizationRequestUri();
     }
 
@@ -65,7 +58,8 @@ public class OAuth2AuthorizationService {
             }
         });
 
-        OAuth2AuthorizationRequest authorizationRequest = oAuthRedisRepo.removeOAuth2AuthorizationRequest(params.getFirst("state"));
+        OAuth2AuthorizationRequestWrapper authorizationRequestWrapper = oAuthRedisRepo.removeOAuth2AuthorizationRequest(params.getFirst("state"));
+        OAuth2AuthorizationRequest authorizationRequest = authorizationRequestWrapper.authorizationRequest();
 
         if (authorizationRequest == null) {
             throw new BusinessException("Invalid state parameter.");
@@ -83,20 +77,16 @@ public class OAuth2AuthorizationService {
         OAuth2AccessTokenResponse tokenResponse = accessTokenResponseClient.getTokenResponse(tokenRequest);
         OAuth2UserRequest userRequest = new OAuth2UserRequest(clientRegistration, tokenResponse.getAccessToken());
         OAuth2User user = oAuth2UserService.loadUser(userRequest);
-        //todo 유저정보 조회 성공 시 엑세스-리프레시 토큰 발급
 
-        OAuthUserInfo oAuthUserInfo = generateOAuthUserInfo(registrationId, user);
-        if (oAuthUserInfo == null) {
-            return;
-        }
-        Optional<OAuthAccountEntity> oAuthAccountEntity = accountRepo.findByProviderNameAndProviderId(oAuthUserInfo.getProviderName(), oAuthUserInfo.getProviderId());
-        if (oAuthAccountEntity.isEmpty()) {
-            MemberEntity memberEntity = new MemberEntity(oAuthUserInfo);
-            memberEntity = memberRepo.save(memberEntity);
-            OAuthAccountEntity newOAuthAccountEntity = new OAuthAccountEntity(oAuthUserInfo, memberEntity);
-            accountRepo.save(newOAuthAccountEntity);
-        }
+        OAuthUserInfo oAuthUserInfo = this.generateOAuthUserInfo(registrationId, user);
 
+        final String purpose = authorizationRequestWrapper.purpose();
+        switch (purpose) {
+            case "login" -> log.info("로그인 진행"); //todo 유저정보 조회 성공 시 엑세스-리프레시 토큰 발급
+            case "join" -> log.info("회원가입 진행");
+            case "connect" -> log.info("새 소셜계정연결 진행");
+            case null, default -> throw new BusinessException("Invalid purpose parameter.");
+        }
     }
 
     private OAuth2AuthorizationRequest resolveAuthorizationRequest(HttpServletRequest request, String registrationId) {
