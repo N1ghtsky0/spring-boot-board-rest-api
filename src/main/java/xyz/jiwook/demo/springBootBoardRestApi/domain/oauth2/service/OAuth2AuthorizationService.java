@@ -18,12 +18,16 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.member.model.MemberEntity;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.member.repo.MemberCrudRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.*;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthAccountCrudRepo;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthRedisRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
 
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -34,25 +38,42 @@ public class OAuth2AuthorizationService {
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService = new DefaultOAuth2UserService();
     private final OAuthAccountCrudRepo accountRepo;
     private final MemberCrudRepo memberRepo;
+    private final OAuthRedisRepo oAuthRedisRepo;
 
     public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository,
-                                      OAuthAccountCrudRepo accountRepo, MemberCrudRepo memberRepo) {
+                                      OAuthAccountCrudRepo accountRepo, MemberCrudRepo memberRepo, OAuthRedisRepo oAuthRedisRepo) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.authorizationRequestResolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
         this.accountRepo = accountRepo;
         this.memberRepo = memberRepo;
+        this.oAuthRedisRepo = oAuthRedisRepo;
     }
 
     public String getAuthorizationUri(HttpServletRequest request, String registrationId) {
-        return this.resolveAuthorizationRequest(request, registrationId).getAuthorizationRequestUri();
+        OAuth2AuthorizationRequest authorizationRequest = this.resolveAuthorizationRequest(request, registrationId);
+        oAuthRedisRepo.saveOAuth2AuthorizationRequest(authorizationRequest.getState(), authorizationRequest);
+        return authorizationRequest.getAuthorizationRequestUri();
     }
 
-    public void attemptAuthentication(HttpServletRequest request, String registrationId, String code) {
-        OAuth2AuthorizationRequest authorizationRequest = this.resolveAuthorizationRequest(request, registrationId);
+    public void attemptAuthentication(HttpServletRequest request, String registrationId) {
+        Map<String, String[]> requestParamMap = request.getParameterMap();
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        requestParamMap.forEach((key, values) -> {
+            for (String value: values) {
+                params.add(key, value);
+            }
+        });
+
+        OAuth2AuthorizationRequest authorizationRequest = oAuthRedisRepo.removeOAuth2AuthorizationRequest(params.getFirst("state"));
+
+        if (authorizationRequest == null) {
+            throw new BusinessException("Invalid state parameter.");
+        }
+
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(registrationId);
 
-        OAuth2AuthorizationResponse authorizationResponse = OAuth2AuthorizationResponse.success(code)
+        OAuth2AuthorizationResponse authorizationResponse = OAuth2AuthorizationResponse.success(params.getFirst("code"))
                 .redirectUri(authorizationRequest.getRedirectUri())
                 .state(authorizationRequest.getState())
                 .build();
