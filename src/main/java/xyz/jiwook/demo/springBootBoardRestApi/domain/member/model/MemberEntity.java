@@ -17,8 +17,11 @@ public class MemberEntity extends MutableEntity {
 
     private String email;
 
-    public MemberEntity(OAuthUserInfo oAuthUserInfo) {
+    private String sub;
+
+    public MemberEntity(OAuthUserInfo oAuthUserInfo, String sub) {
         this.email = oAuthUserInfo.getEmail();
+        this.sub = sub;
     }
 
     protected MemberEntity() {

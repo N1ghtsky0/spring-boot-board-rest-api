@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import xyz.jiwook.demo.springBootBoardRestApi.domain.member.service.MemberService;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.*;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthRedisRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
@@ -35,12 +36,15 @@ public class OAuth2AuthorizationService {
     private final OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = new RestClientAuthorizationCodeTokenResponseClient();
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService = new DefaultOAuth2UserService();
     private final OAuthRedisRepo oAuthRedisRepo;
+    private final MemberService memberService;
 
-    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository, OAuthRedisRepo oAuthRedisRepo) {
+    public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository, OAuthRedisRepo oAuthRedisRepo,
+                                      MemberService memberService) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.authorizationRequestResolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
         this.oAuthRedisRepo = oAuthRedisRepo;
+        this.memberService = memberService;
     }
 
     public String getAuthorizationUri(HttpServletRequest request, String registrationId, String purpose) {
@@ -80,10 +84,14 @@ public class OAuth2AuthorizationService {
 
         OAuthUserInfo oAuthUserInfo = this.generateOAuthUserInfo(registrationId, user);
 
+        if (oAuthUserInfo == null) {
+            throw new BusinessException("Invalid Client Registration Id: " + registrationId);
+        }
+
         final String purpose = authorizationRequestWrapper.purpose();
         switch (purpose) {
             case "login" -> log.info("로그인 진행"); //todo 유저정보 조회 성공 시 엑세스-리프레시 토큰 발급
-            case "join" -> log.info("회원가입 진행");
+            case "join" -> memberService.join(oAuthUserInfo);
             case "connect" -> log.info("새 소셜계정연결 진행");
             case null, default -> throw new BusinessException("Invalid purpose parameter.");
         }
