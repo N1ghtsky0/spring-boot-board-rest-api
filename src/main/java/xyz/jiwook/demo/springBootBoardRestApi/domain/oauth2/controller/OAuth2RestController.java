@@ -1,6 +1,7 @@
 package xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +33,9 @@ public class OAuth2RestController {
 
     @GetMapping("/oauth2/callback/{registrationId}")
     public ResponseEntity<HttpResponseVO> oAuth2CallbackToGenerateToken(@PathVariable String registrationId,
-                                                                        HttpServletRequest request) {
-        oAuth2AuthorizationService.attemptAuthentication(request, registrationId);
+                                                                        HttpServletRequest request,
+                                                                        HttpServletResponse response) {
+        oAuth2AuthorizationService.attemptAuthentication(request, response, registrationId);
         return ResponseEntity.ok(HttpResponseVO.success(Map.of("result", "success")));
     }
 

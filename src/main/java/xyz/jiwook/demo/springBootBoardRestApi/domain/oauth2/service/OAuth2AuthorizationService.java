@@ -1,6 +1,7 @@
 package xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
@@ -25,6 +26,7 @@ import xyz.jiwook.demo.springBootBoardRestApi.domain.member.service.MemberServic
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.*;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.repository.OAuthRedisRepo;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
+import xyz.jiwook.demo.springBootBoardRestApi.global.security.service.AuthenticationService;
 
 import java.util.Map;
 
@@ -37,14 +39,16 @@ public class OAuth2AuthorizationService {
     private final OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService = new DefaultOAuth2UserService();
     private final OAuthRedisRepo oAuthRedisRepo;
     private final MemberService memberService;
+    private final AuthenticationService authenticationService;
 
     public OAuth2AuthorizationService(ClientRegistrationRepository clientRegistrationRepository, OAuthRedisRepo oAuthRedisRepo,
-                                      MemberService memberService) {
+                                      MemberService memberService, AuthenticationService authenticationService) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.authorizationRequestResolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
         this.oAuthRedisRepo = oAuthRedisRepo;
         this.memberService = memberService;
+        this.authenticationService = authenticationService;
     }
 
     public String getAuthorizationUri(HttpServletRequest request, String registrationId, String purpose) {
@@ -53,7 +57,7 @@ public class OAuth2AuthorizationService {
         return authorizationRequest.getAuthorizationRequestUri();
     }
 
-    public void attemptAuthentication(HttpServletRequest request, String registrationId) {
+    public void attemptAuthentication(HttpServletRequest request, HttpServletResponse response, String registrationId) {
         Map<String, String[]> requestParamMap = request.getParameterMap();
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         requestParamMap.forEach((key, values) -> {
@@ -90,7 +94,7 @@ public class OAuth2AuthorizationService {
 
         final String purpose = authorizationRequestWrapper.purpose();
         switch (purpose) {
-            case "login" -> log.info("로그인 진행"); //todo 유저정보 조회 성공 시 엑세스-리프레시 토큰 발급
+            case "login" -> authenticationService.loginProcess(response, oAuthUserInfo);
             case "join" -> memberService.join(oAuthUserInfo);
             case "connect" -> log.info("새 소셜계정연결 진행");
             case null, default -> throw new BusinessException("Invalid purpose parameter.");
