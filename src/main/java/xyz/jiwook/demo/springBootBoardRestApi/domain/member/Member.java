@@ -1,30 +1,28 @@
-package xyz.jiwook.demo.springBootBoardRestApi.domain.member.model;
+package xyz.jiwook.demo.springBootBoardRestApi.domain.member;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import lombok.AccessLevel;
 import lombok.Getter;
-import xyz.jiwook.demo.springBootBoardRestApi.domain.oauth2.model.OAuthUserInfo;
+import lombok.NoArgsConstructor;
 import xyz.jiwook.demo.springBootBoardRestApi.global.common.MutableEntity;
 
 @Getter
 @Entity(name = "member")
-public class MemberEntity extends MutableEntity {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Member extends MutableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long seq;
+    private Long id;
 
     private String email;
 
     private String sub;
 
-    public MemberEntity(OAuthUserInfo oAuthUserInfo, String sub) {
-        this.email = oAuthUserInfo.getEmail();
+    public Member(String email, String sub) {
+        this.email = email;
         this.sub = sub;
-    }
-
-    protected MemberEntity() {
-
     }
 }
