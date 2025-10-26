@@ -1,12 +1,16 @@
 package xyz.jiwook.demo.springBootBoardRestApi.infrastructure.jwt;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
+import java.util.function.Function;
 
 @Component
 public class JwtTokenProvider {
@@ -25,6 +29,19 @@ public class JwtTokenProvider {
                 .expiration(new Date(now + accessTokenValidityMillis))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public String getSubjectFromJwtToken(final String token) {
+        return this.extractFromToken(token, Claims::getSubject);
+    }
+
+    private <T> T extractFromToken(String token, Function<Claims, T> claimsResolver) {
+        try {
+            Claims claims = Jwts.parser().decryptWith((SecretKey) getSigningKey()).build().parseSignedClaims(token).getPayload();
+            return claimsResolver.apply(claims);
+        } catch (ExpiredJwtException e) {
+            return claimsResolver.apply(e.getClaims());
+        }
     }
 
     private Key getSigningKey() {
