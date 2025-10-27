@@ -44,9 +44,13 @@ public class JwtTokenRequestFilter extends OncePerRequestFilter {
         while (headers.hasMoreElements());
         log.info("request uri: {}", request.getRequestURI());
 
-        final String[] whiteList = {"/api/auth/oauth2/authorization/**", "/api/auth/oauth2/callback/**"};
-        if (!PatternMatchUtils.simpleMatch(whiteList, request.getRequestURI())) {
-            final String accessToken = this.getAccessTokenFromRequest(request);
+        final String[] whiteList = {
+                "/api/auth/oauth2/authorization/**/join",
+                "/api/auth/oauth2/authorization/**/login",
+                "/api/auth/oauth2/callback/**"
+        };
+        final String accessToken = this.getAccessTokenFromRequest(request);
+        if (!PatternMatchUtils.simpleMatch(whiteList, request.getRequestURI()) || accessToken != null) {
             final String tokenSubject = jwtTokenProvider.getSubjectFromJwtToken(accessToken);
             Member member = memberService.getMemberBySub(tokenSubject);
 

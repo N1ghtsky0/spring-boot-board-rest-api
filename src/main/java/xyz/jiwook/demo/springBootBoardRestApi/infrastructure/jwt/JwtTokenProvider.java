@@ -37,7 +37,7 @@ public class JwtTokenProvider {
 
     private <T> T extractFromToken(String token, Function<Claims, T> claimsResolver) {
         try {
-            Claims claims = Jwts.parser().decryptWith((SecretKey) getSigningKey()).build().parseSignedClaims(token).getPayload();
+            Claims claims = Jwts.parser().verifyWith((SecretKey) getSigningKey()).build().parseSignedClaims(token).getPayload();
             return claimsResolver.apply(claims);
         } catch (ExpiredJwtException e) {
             return claimsResolver.apply(e.getClaims());

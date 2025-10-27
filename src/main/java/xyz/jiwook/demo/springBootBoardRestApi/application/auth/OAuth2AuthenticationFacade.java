@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
 import xyz.jiwook.demo.springBootBoardRestApi.application.auth.dto.OAuth2UserInfoDto;
+import xyz.jiwook.demo.springBootBoardRestApi.application.auth.usecase.OAuth2ConnectUseCase;
 import xyz.jiwook.demo.springBootBoardRestApi.application.auth.usecase.OAuth2JoinUseCase;
 import xyz.jiwook.demo.springBootBoardRestApi.application.auth.usecase.OAuth2LoginUseCase;
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
@@ -25,6 +26,7 @@ public class OAuth2AuthenticationFacade {
     private final OAuth2AuthenticationService oauth2AuthenticationService;
     private final OAuth2LoginUseCase oauth2LoginUseCase;
     private final OAuth2JoinUseCase oauth2JoinUseCase;
+    private final OAuth2ConnectUseCase oAuth2ConnectUseCase;
     private final JwtTokenProvider jwtTokenProvider;
 
     public String getAuthorizationUri(HttpServletRequest request, String registrationId, String purpose) {
@@ -76,7 +78,6 @@ public class OAuth2AuthenticationFacade {
     }
 
     private void handleConnect(OAuth2UserInfoDto userInfo) {
-        log.info("새 소셜계정 연결 진행: {}", userInfo.providerName());
-        // TODO: 소셜계정 연결 로직 구현
+        oAuth2ConnectUseCase.execute(userInfo);
     }
 }
