@@ -13,7 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import org.springframework.util.PatternMatchUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.member.Member;
 import xyz.jiwook.demo.springBootBoardRestApi.domain.member.MemberService;
@@ -36,21 +35,17 @@ public class JwtTokenRequestFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         log.info("==========JwtTokenRequestFilter==========");
+        log.info("request uri: {}", request.getRequestURI());
         Enumeration<String> headers = request.getHeaderNames();
         do {
             String headerName = headers.nextElement();
-            log.info("{}: {}", headerName, request.getHeader(headerName));
+            log.info("[header] {}: {}", headerName, request.getHeader(headerName));
         }
         while (headers.hasMoreElements());
-        log.info("request uri: {}", request.getRequestURI());
+        request.getParameterMap().forEach((key, values) -> log.info("[parameter] {}: {}", key, values));
 
-        final String[] whiteList = {
-                "/api/auth/oauth2/authorization/**/join",
-                "/api/auth/oauth2/authorization/**/login",
-                "/api/auth/oauth2/callback/**"
-        };
         final String accessToken = this.getAccessTokenFromRequest(request);
-        if (!PatternMatchUtils.simpleMatch(whiteList, request.getRequestURI()) || accessToken != null) {
+        if (accessToken != null) {
             final String tokenSubject = jwtTokenProvider.getSubjectFromJwtToken(accessToken);
             Member member = memberService.getMemberBySub(tokenSubject);
 

@@ -1,6 +1,7 @@
 package xyz.jiwook.demo.springBootBoardRestApi.application.auth.usecase;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,10 @@ public class OAuth2ConnectUseCase {
     @Transactional
     public void execute(OAuth2UserInfoDto userInfo) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
+            throw new IllegalStateException("Not authenticated");
+        }
+
         Member member = memberService.getMemberBySub(authentication.getName());
 
         oauthAccountService.linkOAuthAccount(

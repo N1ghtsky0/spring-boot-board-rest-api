@@ -16,30 +16,13 @@ import java.util.Map;
 public class AuthController {
     private final OAuth2AuthenticationFacade authenticationFacade;
 
-    @GetMapping("/oauth2/authorization/{registrationId}/join")
-    public ResponseEntity<ApiResponse> getAuthorizationUriForJoin(
+    @GetMapping("/oauth2/authorization/{registrationId}/{purpose}")
+    public ResponseEntity<ApiResponse> getAuthorizationUri(
             @PathVariable String registrationId,
+            @PathVariable String purpose,
             HttpServletRequest request
     ) {
-        String authorizationUri = authenticationFacade.getAuthorizationUri(request, registrationId, "join");
-        return ResponseEntity.ok(ApiResponse.success(Map.of("authorizationUri", authorizationUri)));
-    }
-
-    @GetMapping("/oauth2/authorization/{registrationId}/login")
-    public ResponseEntity<ApiResponse> getAuthorizationUriForLogin(
-            @PathVariable String registrationId,
-            HttpServletRequest request
-    ) {
-        String authorizationUri = authenticationFacade.getAuthorizationUri(request, registrationId, "login");
-        return ResponseEntity.ok(ApiResponse.success(Map.of("authorizationUri", authorizationUri)));
-    }
-
-    @GetMapping("/oauth2/authorization/{registrationId}/connect")
-    public ResponseEntity<ApiResponse> getAuthorizationUriForConnect(
-            @PathVariable String registrationId,
-            HttpServletRequest request
-    ) {
-        String authorizationUri = authenticationFacade.getAuthorizationUri(request, registrationId, "connect");
+        String authorizationUri = authenticationFacade.getAuthorizationUri(request, registrationId, purpose);
         return ResponseEntity.ok(ApiResponse.success(Map.of("authorizationUri", authorizationUri)));
     }
 

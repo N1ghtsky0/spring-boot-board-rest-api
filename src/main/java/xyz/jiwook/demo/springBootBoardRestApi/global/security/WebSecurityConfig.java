@@ -19,6 +19,12 @@ import xyz.jiwook.demo.springBootBoardRestApi.infrastructure.jwt.JwtTokenRequest
 public class WebSecurityConfig {
     private final JwtTokenRequestFilter jwtTokenRequestFilter;
 
+    private final String[] whiteList = {
+            "/api/auth/oauth2/authorization/*/join",
+            "/api/auth/oauth2/authorization/*/login",
+            "/api/auth/oauth2/callback/**",
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(CsrfConfigurer::disable)
@@ -26,7 +32,8 @@ public class WebSecurityConfig {
                 .oauth2Login(OAuth2LoginConfigurer::disable)
                 .addFilterBefore(jwtTokenRequestFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(requests -> requests
-                        .anyRequest().permitAll()
+                        .requestMatchers(whiteList).permitAll()
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(sessionManagement -> sessionManagement
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

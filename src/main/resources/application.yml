@@ -33,7 +33,7 @@ spring:
               - account_email
               - profile_nickname
             authorization-grant-type: authorization_code
-            client-authentication-method: post
+            client-authentication-method: client_secret_post
           naver:
             client-id: ${NAVER_CLIENT_ID}
             client-secret: ${NAVER_CLIENT_SECRET}
