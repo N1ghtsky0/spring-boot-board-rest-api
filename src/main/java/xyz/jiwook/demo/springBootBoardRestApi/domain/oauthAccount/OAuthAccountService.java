@@ -20,7 +20,7 @@ public class OAuthAccountService {
 
     public OAuthAccount findOAuthAccount(String providerName, String providerId) {
         return oauthAccountRepository.findByProviderNameAndProviderId(providerName, providerId)
-                .orElseThrow(() -> new BusinessException("OAuth account not found"));
+                .orElseThrow(() -> new BusinessException(OAuthAccountErrorCode.NOT_FOUND));
     }
 
     public boolean isAccountRegistered(String providerName, String providerId) {
@@ -29,7 +29,7 @@ public class OAuthAccountService {
 
     private void validateNotDuplicated(String providerName, String providerId) {
         if (isAccountRegistered(providerName, providerId)) {
-            throw new BusinessException("This OAuth account is already registered");
+            throw new BusinessException(OAuthAccountErrorCode.ALREADY_REGISTERED);
         }
     }
 }

@@ -52,7 +52,7 @@ public class OAuth2AuthenticationService {
 
         OAuth2AuthorizationRequest authorizationRequest = authorizationRequestResolver.resolve(request, registrationId);
         if (authorizationRequest == null) {
-            throw new BusinessException("Failed to create authorization request");
+            throw new BusinessException(OAuth2ErrorCode.BAD_PROVIDER);
         }
 
         OAuth2AuthorizationRequestDto requestDto = new OAuth2AuthorizationRequestDto(authorizationRequest, purpose);
@@ -64,7 +64,7 @@ public class OAuth2AuthenticationService {
     public OAuth2AuthorizationRequestDto getAuthorizationRequestFromState(String state) {
         OAuth2AuthorizationRequestDto requestDto = stateRepository.findAndRemove(state);
         if (requestDto == null) {
-            throw new BusinessException("Invalid or expired state parameter");
+            throw new BusinessException(OAuth2ErrorCode.INVALID_STATE);
         }
         return requestDto;
     }
@@ -96,7 +96,7 @@ public class OAuth2AuthenticationService {
 
     private void validateRegistrationId(String registrationId) {
         if (clientRegistrationRepository.findByRegistrationId(registrationId) == null) {
-            throw new BusinessException("Unsupported OAuth2 provider: " + registrationId);
+            throw new BusinessException(OAuth2ErrorCode.BAD_PROVIDER);
         }
     }
 }

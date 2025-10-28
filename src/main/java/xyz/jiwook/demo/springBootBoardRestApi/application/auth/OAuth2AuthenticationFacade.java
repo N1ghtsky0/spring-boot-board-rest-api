@@ -4,6 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.security.web.util.UrlUtils;
@@ -17,6 +20,7 @@ import xyz.jiwook.demo.springBootBoardRestApi.application.auth.usecase.OAuth2Log
 import xyz.jiwook.demo.springBootBoardRestApi.global.exception.BusinessException;
 import xyz.jiwook.demo.springBootBoardRestApi.infrastructure.jwt.JwtTokenProvider;
 import xyz.jiwook.demo.springBootBoardRestApi.infrastructure.oauth2.OAuth2AuthenticationService;
+import xyz.jiwook.demo.springBootBoardRestApi.infrastructure.oauth2.OAuth2ErrorCode;
 import xyz.jiwook.demo.springBootBoardRestApi.infrastructure.oauth2.dto.OAuth2AuthorizationRequestDto;
 
 @Slf4j
@@ -36,7 +40,8 @@ public class OAuth2AuthenticationFacade {
     public void handleCallback(HttpServletRequest request, HttpServletResponse response, String registrationId) {
         MultiValueMap<String, String> params = OAuth2AuthorizationResponseUtils.toMultiMap(request.getParameterMap());
         if (!OAuth2AuthorizationResponseUtils.isAuthorizationResponse(params)) {
-            throw new BusinessException("Invalid authorization response");
+            OAuth2Error oauth2Error = new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST);
+            throw new OAuth2AuthenticationException(oauth2Error, oauth2Error.toString());
         }
 
         OAuth2AuthorizationRequestDto authorizationRequestDto =
@@ -63,7 +68,7 @@ public class OAuth2AuthenticationFacade {
             case "login" -> handleLogin(response, userInfo);
             case "join" -> handleJoin(userInfo);
             case "connect" -> handleConnect(userInfo);
-            default -> throw new BusinessException("Invalid purpose: " + purpose);
+            default -> throw new BusinessException(OAuth2ErrorCode.INVALID_PURPOSE);
         }
     }
 

@@ -17,7 +17,7 @@ public class OAuth2UserInfoService {
             case "google" -> new GoogleOAuth2UserInfo(oauth2User.getAttributes());
             case "kakao" -> new KakaoOAuth2UserInfo(oauth2User.getAttributes());
             case "naver" -> new NaverOAuth2UserInfo(oauth2User.getAttributes());
-            default -> throw new BusinessException("Unsupported OAuth2 provider: " + registrationId);
+            default -> throw new BusinessException(OAuth2ErrorCode.BAD_PROVIDER);
         };
 
         return new OAuth2UserInfoDto(

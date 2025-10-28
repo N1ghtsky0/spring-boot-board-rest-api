@@ -1,7 +1,14 @@
 package xyz.jiwook.demo.springBootBoardRestApi.global.exception;
 
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+
+@Getter
 public class BusinessException extends RuntimeException {
-    public BusinessException(String message) {
-        super(message);
+    private final HttpStatus httpStatus;
+
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.httpStatus = errorCode.getStatus();
     }
 }
